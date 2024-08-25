@@ -1,0 +1,45 @@
+# Ignore files and directories
+
+# Operating system files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Python files
+__pycache__/
+# *.pyc
+*.pyo
+
+# Virtual environment files
+venv/
+env/
+.genv/
+*.egg-info/
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# Log files
+*.log
+logs/
+
+# Database files
+*.db
+*.sqlite
+*.sql
+
+# Environment files
+.env
+
+# Other files
+# *.tmp
+# *.bak
+# *.old
+# *.orig
+# *.swp
+
+# Obsidian Files
+.obsidian/

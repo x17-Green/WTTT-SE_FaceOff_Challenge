@@ -9,7 +9,10 @@ game_bp = Blueprint('game', __name__)
 @game_bp.route('/start_game', methods=['POST'])
 def start_game():
     
-    player1_id = request.json['player1_id']
+    player1_id = request.json.get('player1_id')
+    if player1_id is None:
+        return jsonify({"error": "Player 1 ID is required!"}), 400
+
     player2_id = request.json.get('player2_id')  # Optional for computer opponent
     difficulty = request.json.get('difficulty')  # Optional, used if playing against computer
 
@@ -22,13 +25,9 @@ def start_game():
         "player1_id": ObjectId(player1_id),
         "player2_id": ObjectId(player2_id) if player2_id else None,  # None if playing against the computer
         "winner_id": None,  # Gets updated when game ends
-        "timestamp": datetime.now('UTC'), # Can be changed to local time if needed
+        "timestamp": datetime.now(), # Can be changed to local time if needed
         "difficulty": difficulty if player2_id is None else None  # Only relevant if playing against the computer
     }).inserted_id
-    # Update the games_played field in users collection for both players
-    users.update_one({"_id": ObjectId(player1_id)}, {"$push": {"games_played": game_id}})
-    if player2_id:
-        users.update_one({"_id": ObjectId(player2_id)}, {"$push": {"games_played": game_id}})
 
     return jsonify({"message": "Game started!", "game_id": str(game_id)}), 201
 
@@ -39,19 +38,40 @@ def end_game(game_id):
     from app import mongo
     games = mongo.db.games
     users = mongo.db.users
-    player2_id = games.find_one({"_id": ObjectId(game_id)})['player2_id']
+    game = games.find_one({"_id": ObjectId(game_id)})
+    
+    if game is None:
+        return jsonify({"error": "Game not found!"}), 404
+    player1_id = game.get('player1_id')
+    player2_id = game.get('player2_id')
+
     if winner_id is None:
-        users.update_one({"_id": ObjectId(games['player1_id'])}, {"$inc": {"games_drawn": 1}})
-        if player2_id:
-            users.update_one({"_id": ObjectId(games['player2_id'])}, {"$inc": {"games_drawn": 1}})
+        for player in [player1_id, player2_id]:
+            if player:
+                games_played = users.find_one({"_id": ObjectId(player)})['games_played']
+                if game_id not in games_played:
+                    users.update_one({"_id": ObjectId(player)}, {"$inc": {"games_drawn": 1}})
+
         return jsonify({"message": "Game ended in a draw!"}), 200
+
     # Update the game document with the winner
     games.update_one(
         {"_id": ObjectId(game_id)},
         {"$set": {"winner_id": ObjectId(winner_id) if winner_id else None}}
     )
+    # Update the winner's games_won field
+    users.update_one({"_id": ObjectId(winner_id)}, {"$inc": {"games_won": 1}})
+    if player2_id != winner_id:
+        users.update_one({"_id": ObjectId(player2_id)}, {"$inc": {"games_lost": 1}})
+    else:
+        users.update_one({"_id": ObjectId(player1_id)}, {"$inc": {"games_lost": 1}})
+    
+    # Update the games_played field in users collection for both players
+    users.update_one({"_id": ObjectId(player1_id)}, {"$push": {"games_played": game_id}})
+    if player2_id:
+        users.update_one({"_id": ObjectId(player2_id)}, {"$push": {"games_played": game_id}})
 
-    return jsonify({"message": "Game ended!"}), 200
+    return jsonify({"message": "Game ended!", "winner_id": str(winner_id)}), 200
 
 @game_bp.route('/get_game/<game_id>', methods=['GET'])
 def get_game(game_id):

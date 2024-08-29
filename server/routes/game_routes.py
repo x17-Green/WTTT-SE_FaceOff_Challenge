@@ -26,7 +26,8 @@ def start_game():
         "player2_id": ObjectId(player2_id) if player2_id else None,  # None if playing against the computer
         "winner_id": None,  # Gets updated when game ends
         "timestamp": datetime.now(), # Can be changed to local time if needed
-        "difficulty": difficulty if player2_id is None else None  # Only relevant if playing against the computer
+        "difficulty": difficulty if player2_id is None else None,  # Only relevant if playing against the computer
+        "game_done": False
     }).inserted_id
 
     return jsonify({"message": "Game started!", "game_id": str(game_id)}), 201
@@ -42,14 +43,27 @@ def end_game(game_id):
     
     if game is None:
         return jsonify({"error": "Game not found!"}), 404
+    
+    if game.get('game_done'):
+        return jsonify({"error": "Game already ended!"}), 400
+
     player1_id = game.get('player1_id')
     player2_id = game.get('player2_id')
+    
+    # Update the games_played field in users collection for both players
+    users.update_one({"_id": ObjectId(player1_id)}, {"$push": {"games_played": game_id}})
+    if player2_id:
+        users.update_one({"_id": ObjectId(player2_id)}, {"$push": {"games_played": game_id}})
 
+    # Update game status
+    games.update_one({"_id": ObjectId(game_id)}, {"$set": {"game_done": True}})
+
+    # If game is drawn
     if winner_id is None:
         for player in [player1_id, player2_id]:
             if player:
                 games_played = users.find_one({"_id": ObjectId(player)})['games_played']
-                if game_id not in games_played:
+                if game_id in games_played:
                     users.update_one({"_id": ObjectId(player)}, {"$inc": {"games_drawn": 1}})
 
         return jsonify({"message": "Game ended in a draw!"}), 200
@@ -65,11 +79,6 @@ def end_game(game_id):
         users.update_one({"_id": ObjectId(player2_id)}, {"$inc": {"games_lost": 1}})
     else:
         users.update_one({"_id": ObjectId(player1_id)}, {"$inc": {"games_lost": 1}})
-    
-    # Update the games_played field in users collection for both players
-    users.update_one({"_id": ObjectId(player1_id)}, {"$push": {"games_played": game_id}})
-    if player2_id:
-        users.update_one({"_id": ObjectId(player2_id)}, {"$push": {"games_played": game_id}})
 
     return jsonify({"message": "Game ended!", "winner_id": str(winner_id)}), 200
 

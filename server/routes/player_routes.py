@@ -119,5 +119,5 @@ def get_all_players():
         player['_id'] = str(player['_id'])
         player['games_played'] = [str(game_id) for game_id in player['games_played']]
         players_list.append(player)
-    print("players_list", players_list)
+    # print("players_list", players_list)
     return jsonify(players_list), 200

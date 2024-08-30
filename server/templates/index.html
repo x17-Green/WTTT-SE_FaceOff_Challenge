@@ -229,6 +229,26 @@
         console.log(`Current player: ${currentPlayer}`);
     });
 
+    socket.on('game_over', (data) => {
+        gameActive = false;
+        statusDisplay.textContent = data.winner === 'Draw' ? "It's a Draw!" : `Player ${data.winner} wins!`;
+        document.getElementById('game-results').textContent = statusDisplay.textContent;
+        document.getElementById('game-results').style.display = 'block';
+    });
+
+
+
+    // socket.on('move_made', (data) => {
+    //     const cell = document.querySelector(`[data-index="${data.index}"]`);
+    //     cell.textContent = data.player;
+    //     cell.classList.add(data.player.toLowerCase());
+    //     board[data.index] = data.player;
+    //     currentPlayer = data.turn;
+    //     statusDisplay.textContent = `Player ${currentPlayer}'s turn`;
+
+    //     console.log(`Move made by player: ${data.player} at index: ${data.index}`);
+    //     console.log(`Next player: ${currentPlayer}`);
+    // });
 
     socket.on('move_made', (data) => {
         const cell = document.querySelector(`[data-index="${data.index}"]`);
@@ -242,6 +262,15 @@
         console.log(`Next player: ${currentPlayer}`);
     });
 
+
+    // function makeMove(cell) {
+    //     const index = cell.getAttribute('data-index');
+    //     if (board[index] === '' && gameActive && currentPlayer) {
+    //         console.log(`Attempting move at index: ${index} by player: ${currentPlayer}`);
+    //         socket.emit('make_move', { index: index, player: currentPlayer, room: room });
+    //     }
+    // }
+
     function makeMove(cell) {
         const index = cell.getAttribute('data-index');
         if (board[index] === '' && gameActive && currentPlayer) {
@@ -249,6 +278,7 @@
             socket.emit('make_move', { index: index, player: currentPlayer, room: room });
         }
     }
+
 
     function restartGame() {
         socket.emit('restart_game', { room: room });

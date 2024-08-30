@@ -59,12 +59,19 @@ def handle_make_move(data):
     if rooms[room]['board'][index] == '' and rooms[room]['turn'] == player:
         # Make the move
         rooms[room]['board'][index] = player
+        
+        # Debugging output
+        print(f"Move made by {player} at index {index}")
+        print(f"Board state: {rooms[room]['board']}")
+
         # Check for game over conditions (win or draw)
         winner = check_winner(rooms[room]['board'])
         if winner:
+            print(f"Game over! Winner: {winner}")
             emit('game_over', {'winner': winner}, room=room)
             cleanup_room(room)
         elif '' not in rooms[room]['board']:
+            print("Game over! It's a draw.")
             emit('game_over', {'winner': 'Draw'}, room=room)
             cleanup_room(room)
         else:
@@ -87,7 +94,6 @@ def handle_disconnect():
             break
 
 def check_winner(board):
-    # Define winning combinations
     win_combinations = [
         [0, 1, 2],  # Top row
         [3, 4, 5],  # Middle row
@@ -102,6 +108,7 @@ def check_winner(board):
         if board[combo[0]] != '' and board[combo[0]] == board[combo[1]] == board[combo[2]]:
             return board[combo[0]]
     return None
+
 
 def cleanup_room(room):
     # Remove the room from the dictionary if it's empty

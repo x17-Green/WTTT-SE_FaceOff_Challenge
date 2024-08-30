@@ -8,23 +8,60 @@
 <body>
     <h1>Socket.IO Tic Tac Toe</h1>
     <button id="join-btn">Join Game</button>
-    <button id="start-btn" style="display:none;">Start Game</button>
+    <button id="start-btn" style="display: none;">Start Game</button>
+    <button id="pause-btn" style="display: none;">Pause Game</button>
+    <button id="quit-btn" style="display: none;">Quit Game</button>
+    <button id="resume-btn" style="display: none;">Resume Game</button>
     <p id="status"></p>
     <p id="player-count">Players in room: 0</p>
 
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script>
         const socket = io();
+        let room;
+        let playerName;
+        let isGamePaused = false;
 
         document.getElementById('join-btn').addEventListener('click', () => {
-            const room = prompt("Enter room name:");
-            const playerName = prompt("Enter your name:");
+            room = prompt("Enter room name:");
+            playerName = prompt("Enter your name:");
 
             socket.emit('join_game', { room: room, playerName: playerName });
 
             socket.on('connection_success', (data) => {
                 document.getElementById('status').textContent = data.message;
                 updatePlayerCount(data.player_count);
+            });
+
+            socket.on('start_game', (gameState) => {
+                document.getElementById('join-btn').style.display = 'none';
+                document.getElementById('start-btn').style.display = 'none';
+                document.getElementById('pause-btn').style.display = 'block';
+                document.getElementById('quit-btn').style.display = 'block';
+                document.getElementById('resume-btn').style.display = 'none';
+                document.getElementById('status').textContent = 'Game started!';
+            });
+
+            socket.on('game_paused', (data) => {
+                isGamePaused = true;
+                document.getElementById('pause-btn').style.display = 'none';
+                document.getElementById('resume-btn').style.display = 'block';
+                document.getElementById('status').textContent = data.message;
+            });
+
+            socket.on('game_resumed', () => {
+                isGamePaused = false;
+                document.getElementById('pause-btn').style.display = 'block';
+                document.getElementById('resume-btn').style.display = 'none';
+                document.getElementById('status').textContent = 'Game resumed!';
+            });
+
+            socket.on('player_quit', (data) => {
+                document.getElementById('status').textContent = data.message;
+                document.getElementById('join-btn').style.display = 'block';
+                document.getElementById('pause-btn').style.display = 'none';
+                document.getElementById('quit-btn').style.display = 'none';
+                document.getElementById('resume-btn').style.display = 'none';
             });
 
             socket.on('update_player_count', (data) => {
@@ -35,40 +72,36 @@
                 document.getElementById('status').textContent = data.message;
             });
 
-            socket.on('game_ready', () => {
-                document.getElementById('start-btn').style.display = 'block';
-                document.getElementById('join-btn').style.display = 'none';
-            });
-
-            socket.on('start_game', (gameState) => {
-                document.getElementById('status').textContent = "Game Started!";
-                document.getElementById('start-btn').style.display = 'none';
-                document.getElementById('join-btn').style.display = 'none';
-                // Initialize the game board here
-            });
-
-            socket.on('player_left', (data) => {
-                document.getElementById('status').textContent = data.message;
-                document.getElementById('join-btn').style.display = 'block';
-                document.getElementById('start-btn').style.display = 'none';
-                updatePlayerCount(data.player_count);
-            });
-
             socket.on('player_disconnected', (data) => {
                 document.getElementById('status').textContent = data.message;
-                document.getElementById('join-btn').style.display = 'block';
-                document.getElementById('start-btn').style.display = 'none';
                 updatePlayerCount(data.player_count);
             });
         });
 
         document.getElementById('start-btn').addEventListener('click', () => {
-            const room = prompt("Confirm room name to start:");
             socket.emit('start_game', { room: room });
+        });
+
+        document.getElementById('pause-btn').addEventListener('click', () => {
+            socket.emit('pause_game', { room: room });
+        });
+
+        document.getElementById('resume-btn').addEventListener('click', () => {
+            socket.emit('resume_game', { room: room });
+        });
+
+        document.getElementById('quit-btn').addEventListener('click', () => {
+            socket.emit('quit_game', { room: room });
+            document.getElementById('pause-btn').style.display = 'none';
+            document.getElementById('quit-btn').style.display = 'none';
+            document.getElementById('resume-btn').style.display = 'none';
         });
 
         function updatePlayerCount(count) {
             document.getElementById('player-count').textContent = `Players in room: ${count}`;
+            if (count === 2) {
+                document.getElementById('start-btn').style.display = 'block';
+            }
         }
     </script>
 </body>

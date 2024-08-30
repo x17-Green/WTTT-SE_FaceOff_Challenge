@@ -59,6 +59,7 @@
             socket.on('player_quit', (data) => {
                 document.getElementById('status').textContent = data.message;
                 document.getElementById('join-btn').style.display = 'block';
+                document.getElementById('start-btn').style.display = 'none';
                 document.getElementById('pause-btn').style.display = 'none';
                 document.getElementById('quit-btn').style.display = 'none';
                 document.getElementById('resume-btn').style.display = 'none';

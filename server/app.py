@@ -35,36 +35,6 @@ def handle_join_game(data):
     else:
         emit('room_full', {'message': 'Room is full'}, room=request.sid)
 
-@socketio.on('resume_game')
-def handle_resume_game(data):
-    room = data['room']
-    room_info = rooms[room]
-    
-    if room_info.get('game_paused'):
-        room_info['game_paused'] = False
-        emit('game_resumed', room=room)
-
-@socketio.on('make_move')
-def handle_make_move(data):
-    room = data['room']
-    move = data['move']
-
-    room_info = rooms[room]
-    if room_info.get('game_paused'):
-        emit('error', {'message': 'Game is paused!'}, room=request.sid)
-        return
-
-    game_state = room_info['game_state']
-
-    symbol = 'X' if room_info['players'][0]['id'] == request.sid else 'O'
-    game_state[move['row']][move['col']] = symbol
-
-    emit('update_board', {'board': game_state}, room=room)
-
-    winner = check_game_over(game_state)
-    if winner:
-        emit('game_over', {'winner': winner}, room=room)
-
 @socketio.on('pause_game')
 def handle_pause_game(data):
     room = data['room']
@@ -74,13 +44,28 @@ def handle_pause_game(data):
     player_name = [p['name'] for p in room_info['players'] if p['id'] == request.sid][0]
     emit('game_paused', {'message': f'Game paused by {player_name}'}, room=room)
 
+@socketio.on('resume_game')
+def handle_resume_game(data):
+    room = data['room']
+    room_info = rooms[room]
+    
+    if room_info.get('game_paused'):
+        room_info['game_paused'] = False
+        emit('game_resumed', room=room)
+
 @socketio.on('quit_game')
 def handle_quit_game(data):
     room = data['room']
     player_name = [p['name'] for p in rooms[room]['players'] if p['id'] == request.sid][0]
 
-    rooms.pop(room, None)
+    room_info = rooms[room]
+    room_info['players'] = [p for p in room_info['players'] if p['id'] != request.sid]
+    
     emit('player_quit', {'message': f'{player_name} has quit the game'}, room=room)
+    emit('update_player_count', {'player_count': len(room_info['players'])}, room=room)
+
+    if len(room_info['players']) == 0:
+        del rooms[room]
 
 @socketio.on('disconnect')
 def handle_disconnect():

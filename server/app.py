@@ -1,28 +1,3 @@
-
-# from flask import Flask, render_template
-# from flask_socketio import SocketIO
-
-# app = Flask(__name__)
-# app.config['SECRET_KEY'] = 'secret!'
-# socketio = SocketIO(app, cors_allowed_origins="*")
-
-# @socketio.on('connect')
-# def handle_connect():
-#     print('Client connected')
-
-# @socketio.on('make_move')
-# def handle_make_move(data):
-#     # Broadcast the move to all clients
-#     socketio.emit('move_made', data)
-
-# @app.route('/')
-# def index():
-#     return render_template('index.html')
-
-# if __name__ == '__main__':
-#     socketio.run(app, debug=True)
-
-
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import random
@@ -41,6 +16,7 @@ def handle_connect():
 @socketio.on('join_game')
 def handle_join_game(data):
     player_name = data['player']
+    player_sid = request.sid  # Get the unique session ID for the player
     room = None
 
     # Find an available room or create a new one
@@ -48,17 +24,16 @@ def handle_join_game(data):
         if len(rooms[r]['players']) < 2:
             room = r
             break
-    
+
     if room is None:
         room = str(random.randint(1000, 9999))
         rooms[room] = {'players': [], 'turn': 'X', 'board': ['', '', '', '', '', '', '', '', '']}
     
-    rooms[room]['players'].append(player_name)
+    rooms[room]['players'].append(player_sid)
     join_room(room)
 
     if len(rooms[room]['players']) == 2:
-        # Determine the initial turn based on the player list order
-        initial_turn = 'X' if rooms[room]['players'][0] == player_name else 'O'
+        initial_turn = 'X' if rooms[room]['players'][0] == player_sid else 'O'
         rooms[room]['turn'] = initial_turn
 
         emit('game_start', {
@@ -68,6 +43,7 @@ def handle_join_game(data):
         }, room=room)
     else:
         emit('waiting_for_opponent', {'message': 'Waiting for opponent...'}, room=room)
+
 
 @socketio.on('make_move')
 def handle_make_move(data):
